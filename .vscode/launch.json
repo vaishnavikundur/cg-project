@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Flappy Fish",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/flappy_fish.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        }
+    ]
+}
