@@ -13,7 +13,8 @@
                 "-lraylib",
                 "-lopengl32",
                 "-lgdi32",
-                "-lwinmm"
+                "-lwinmm",
+                "-lm"
             ],
             "group": {
                 "kind": "build",
