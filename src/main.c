@@ -616,14 +616,14 @@ bool CheckCollision(void)
         float dz = fish.position.z - obstacles[i].position.z;
         float horizDistSq = dx*dx + dz*dz;
         // Make collision detection slightly less sensitive to avoid "near misses" triggering a hit.
-        const float COLLISION_SLOP = 0.4f; // small forgiving margin
+        const float COLLISION_SLOP = 1.0f; // small forgiving margin
         float threshold = (OBSTACLE_RADIUS + FISH_RADIUS) - COLLISION_SLOP;
         if (threshold < 0.05f) threshold = (OBSTACLE_RADIUS + FISH_RADIUS) * 0.20f; // safety
         if (horizDistSq <= threshold*threshold)
         {
             // fish center must be fully inside the gap (consider fish radius)
             // Give minimal vertical tolerance so grazing the edge doesn't kill immediately
-            const float VERTICAL_TOLERANCE = 0.05f;
+            const float VERTICAL_TOLERANCE = 0.15f;
             float gapBottom = obstacles[i].gapY + FISH_RADIUS + VERTICAL_TOLERANCE;
             float gapTop = obstacles[i].gapY + currentGapSize - FISH_RADIUS - VERTICAL_TOLERANCE;
             if (fish.position.y < gapBottom || fish.position.y > gapTop) return true;
