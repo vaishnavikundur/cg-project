@@ -74,6 +74,7 @@ static float gameTime = 0.0f;
 static float currentGapSize = GAP_SIZE;  // Track gap size (decreases with difficulty)
 static float currentObstacleSpeed = FISH_SPEED;  // Track obstacle speed (increases with difficulty)
 static float difficultyTimer = 0.0f;  // Timer for difficulty scaling
+static int difficultyLevel = 1; // current difficulty level
 
 // Audio assets
 static Music bgMusic = {0};
@@ -128,7 +129,7 @@ static void InitButtons(void)
     pauseBtn.color = DARKGRAY;
 
     resumeBtn.text = "RESUME";
-    resumeBtn.color = BLUE;
+    resumeBtn.color = BEIGE;
 
     playAgainBtn.text = "PLAY AGAIN";
     playAgainBtn.color = BEIGE;
@@ -245,6 +246,7 @@ void InitGame(void)
     gameState = STATE_START;
     score = 0;
     gameTime = 0;
+    difficultyLevel = 1;
 
     // initialize UI buttons for current window size
     InitButtons();
@@ -270,7 +272,7 @@ void UpdateGame(void)
         // start either from keyboard or start button
         if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
             IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
-            IsKeyPressed(KEY_SPACE) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON) ||
+            IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON) ||
             ButtonPressed(&startBtn))
         {
             gameState = STATE_PLAYING;
@@ -283,8 +285,8 @@ void UpdateGame(void)
         UpdateMusicStream(bgMusic);
         if (!IsMusicStreamPlaying(bgMusic) && bgMusic.frameCount > 0) PlayMusicStream(bgMusic);
 
-        // pause by pressing P or clicking the pause button
-        if (IsKeyPressed(KEY_P) || ButtonPressed(&pauseBtn)) { gameState = STATE_PAUSED; return; }
+        // pause by pressing P, Enter, or clicking the pause button
+        if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ENTER) || ButtonPressed(&pauseBtn)) { gameState = STATE_PAUSED; return; }
 
         // FLAPPY physics: pressing flap sets a positive upward velocity; gravity pulls down
         if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_SPACE) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -313,6 +315,7 @@ void UpdateGame(void)
         difficultyTimer += GetFrameTime();
         if (difficultyTimer >= DIFFICULTY_INTERVAL) {
             difficultyTimer = 0.0f;
+            difficultyLevel++; // bump level
             // Increase obstacle speed
             currentObstacleSpeed += SPEED_INCREMENT;
             // Decrease gap size (but maintain minimum of 4.0f for playability)
@@ -362,8 +365,8 @@ void UpdateGame(void)
 
     else if (gameState == STATE_PAUSED)
     {
-        // Resume by button or P; Play again by button
-        if (ButtonPressed(&resumeBtn) || IsKeyPressed(KEY_P))
+        // Resume by button, P, or Enter; Play again by button or SPACE/UP
+        if (ButtonPressed(&resumeBtn) || IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ENTER))
         {
             gameState = STATE_PLAYING;
         }
@@ -376,7 +379,7 @@ void UpdateGame(void)
     else if (gameState == STATE_GAME_OVER)
     {
             // play again button or keyboard
-            if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_SPACE) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || ButtonPressed(&playAgainBtn))
+            if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || ButtonPressed(&playAgainBtn))
             {
                 ResetGame();
             }
@@ -410,11 +413,13 @@ void DrawGame(void)
 
         // start button
         DrawButton(&startBtn, 30);
+        DrawText("Press ENTER to start", GetScreenWidth()/2 - 140, GetScreenHeight()/2 + 140, 22, LIGHTGRAY);
     }
     else if (gameState == STATE_PLAYING)
     {
         DrawText(TextFormat("Score: %i", score), 30, 30, 50, WHITE);
         DrawText(TextFormat("High: %i", highScore), 30, 90, 30, LIGHTGRAY);
+        DrawText(TextFormat("Level: %i", difficultyLevel), 30, 130, 28, YELLOW);
 
         // pause button
         DrawButton(&pauseBtn, 18);
@@ -425,6 +430,7 @@ void DrawGame(void)
         DrawText("PAUSED", GetScreenWidth()/2 - 120, GetScreenHeight()/2 - 220, 80, WHITE);
         DrawButton(&resumeBtn, 30);
         DrawButton(&playAgainBtn, 26);
+        DrawText("Press ENTER to resume", GetScreenWidth()/2 - 140, GetScreenHeight()/2 + 120, 20, LIGHTGRAY);
     }
     else if (gameState == STATE_GAME_OVER)
     {
@@ -453,6 +459,7 @@ void ResetGame(void)
     currentGapSize = GAP_SIZE;
     currentObstacleSpeed = FISH_SPEED;
     difficultyTimer = 0.0f;
+    difficultyLevel = 1;
 
     for (int i = 0; i < MAX_OBSTACLES; i++)
     {
@@ -528,15 +535,17 @@ void DrawObstacle(Vector3 p, float gapY)
     Color coral = (Color){255,127,80,255};
     Color dark  = (Color){200,90,60,255};
 
+    // Use rectangular blocks for obstacles instead of cylinders
+    float half = OBSTACLE_RADIUS; // treat OBSTACLE_RADIUS as half-width for rectangular pillars
     float bottomH = gapY;
-    DrawCylinder((Vector3){p.x,bottomH/2,p.z},OBSTACLE_RADIUS,OBSTACLE_RADIUS,bottomH,12,coral);
-    DrawCylinderWires((Vector3){p.x,bottomH/2,p.z},OBSTACLE_RADIUS,OBSTACLE_RADIUS,bottomH,12,dark);
+    DrawCube((Vector3){p.x, bottomH/2, p.z}, half*2.0f, bottomH, half*2.0f, coral);
+    DrawCubeWires((Vector3){p.x, bottomH/2, p.z}, half*2.0f, bottomH, half*2.0f, dark);
 
-    float topY = gapY + GAP_SIZE;
+    float topY = gapY + currentGapSize; // use dynamic gap size
     float topH = pipeHeight - topY;
 
-    DrawCylinder((Vector3){p.x,topY+topH/2,p.z},OBSTACLE_RADIUS,OBSTACLE_RADIUS,topH,12,coral);
-    DrawCylinderWires((Vector3){p.x,topY+topH/2,p.z},OBSTACLE_RADIUS,OBSTACLE_RADIUS,topH,12,dark);
+    DrawCube((Vector3){p.x, topY + topH/2, p.z}, half*2.0f, topH, half*2.0f, coral);
+    DrawCubeWires((Vector3){p.x, topY + topH/2, p.z}, half*2.0f, topH, half*2.0f, dark);
 }
 
 //------------------------------------------------------------------------------------
@@ -607,23 +616,21 @@ void DrawBubbles(void)
 //------------------------------------------------------------------------------------
 bool CheckCollision(void)
 {
-    if (fish.position.y <= 0.0f || fish.position.y >= 15.5f) return true; // hitting bounds -> game over
+    if (fish.position.y <= 0.8f || fish.position.y >= 10.5f) return true; // hitting bounds -> game over
 
     for (int i=0;i<MAX_OBSTACLES;i++)
     {
-        // precise horizontal distance between fish and obstacle center
+        // Box-like horizontal check to match rectangular obstacles
         float dx = fish.position.x - obstacles[i].position.x;
         float dz = fish.position.z - obstacles[i].position.z;
-        float horizDistSq = dx*dx + dz*dz;
-        // Make collision detection slightly less sensitive to avoid "near misses" triggering a hit.
-        const float COLLISION_SLOP = 1.0f; // small forgiving margin
-        float threshold = (OBSTACLE_RADIUS + FISH_RADIUS) - COLLISION_SLOP;
-        if (threshold < 0.05f) threshold = (OBSTACLE_RADIUS + FISH_RADIUS) * 0.20f; // safety
-        if (horizDistSq <= threshold*threshold)
+        const float COLLISION_SLOP = 0.4f; // forgiving margin
+        float horizThreshold = (OBSTACLE_RADIUS + FISH_RADIUS) - COLLISION_SLOP;
+        if (horizThreshold < 0.05f) horizThreshold = (OBSTACLE_RADIUS + FISH_RADIUS) * 0.08f; // safety
+
+        if (fabsf(dx) <= horizThreshold && fabsf(dz) <= horizThreshold)
         {
             // fish center must be fully inside the gap (consider fish radius)
-            // Give minimal vertical tolerance so grazing the edge doesn't kill immediately
-            const float VERTICAL_TOLERANCE = 0.15f;
+            const float VERTICAL_TOLERANCE = 0.1f;
             float gapBottom = obstacles[i].gapY + FISH_RADIUS + VERTICAL_TOLERANCE;
             float gapTop = obstacles[i].gapY + currentGapSize - FISH_RADIUS - VERTICAL_TOLERANCE;
             if (fish.position.y < gapBottom || fish.position.y > gapTop) return true;
